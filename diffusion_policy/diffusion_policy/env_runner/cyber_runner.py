@@ -92,7 +92,7 @@ class LeggedRunner(BaseLowdimRunner):
         
         
         save_zarr = generate_data
-        len_to_save = 1200 if not generate_data else 4e6
+        len_to_save = 1200 if not generate_data else 4e5
         print("length to save", len_to_save)
         
         if save_zarr:
