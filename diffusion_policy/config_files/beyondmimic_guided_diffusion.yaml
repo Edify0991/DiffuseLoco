@@ -1,6 +1,6 @@
 _target_: diffusion_policy.workspace.train_diffusion_transformer_lowdim_workspace.TrainDiffusionTransformerLowdimWorkspace
-name: beyondmimic_guided_diffusion
-exp_name: beyondmimic_cyberdog2
+name: beyondmimic_transformer_full
+exp_name: beyondmimic_causal_distill_state_latent
 
 horizon: 12
 obs_dim: 45
@@ -11,23 +11,23 @@ obs_as_cond: true
 pred_action_steps_only: false
 
 policy:
-  _target_: diffusion_policy.policy.guided_diffusion_transformer_lowdim_policy.GuidedDiffusionTransformerLowdimPolicy
+  _target_: diffusion_policy.policy.beyondmimic_transformer_lowdim_policy.BeyondMimicTransformerLowdimPolicy
   model:
     _target_: diffusion_policy.model.diffusion.transformer_for_diffusion.TransformerForDiffusion
-    input_dim: 12
-    output_dim: 12
+    input_dim: 64
+    output_dim: 64
     horizon: 12
     n_obs_steps: 8
-    cond_dim: 42
-    n_layer: 6
-    n_head: 4
+    cond_dim: 64
+    n_layer: 8
+    n_head: 8
     n_emb: 256
     p_drop_emb: 0.0
     p_drop_attn: 0.1
     causal_attn: true
     time_as_cond: true
     obs_as_cond: true
-    n_cond_layers: 0
+    n_cond_layers: 2
     separate_goal_conditioning: true
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
@@ -43,18 +43,12 @@ policy:
   action_dim: 12
   n_action_steps: 4
   n_obs_steps: 8
+  latent_dim: 64
+  teacher_count: 3
   num_inference_steps: 20
-  obs_as_cond: true
   pred_action_steps_only: false
-  guidance_scale: 1.5
-  guidance_lr: 0.05
-  guidance_steps: 1
-  guidance_loss_weight: 0.2
-  guidance_hidden_dim: 256
-  objective_weights:
-    tracking: 1.0
-    stability: 0.8
-    energy: 0.15
+  distill_loss_weight: 0.25
+  recon_loss_weight: 0.1
 
 optimizer:
   learning_rate: 1.0e-4
@@ -146,8 +140,8 @@ checkpoint:
 
 logging:
   project: diffusion_policy_debug
-  name: beyondmimic_guided_diffusion
-  tags: [beyondmimic, guided_diffusion, humanoid_control]
+  name: beyondmimic_transformer_full
+  tags: [beyondmimic, causal_attention, multi_policy_distillation, state_latent]
   id: null
   group: null
   mode: online
@@ -155,4 +149,4 @@ logging:
 
 multi_run:
   run_dir: data/outputs/beyondmimic
-  wandb_name_base: beyondmimic_guided_diffusion
+  wandb_name_base: beyondmimic_transformer_full

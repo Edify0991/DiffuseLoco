@@ -1,47 +1,62 @@
-# BeyondMimic Reproduction (Guided Diffusion Baseline)
+# BeyondMimic Reproduction (Transformer + Distillation + State-Latent)
 
-This repository now includes a **BeyondMimic-inspired guided diffusion policy** built on top of the original DiffuseLoco training stack.
+This update adds a **closer BeyondMimic-style implementation** on top of DiffuseLoco with the three core ideas you asked for:
 
-## What is implemented
+1. **Transformer diffusion with causal attention**
+2. **Multi-policy distillation**
+3. **State-latent diffusion modeling**
 
-- `GuidedDiffusionTransformerLowdimPolicy`
-  - keeps the original diffusion denoising objective;
-  - adds an auxiliary guidance head trained with locomotion proxy signals;
-  - applies gradient guidance during the reverse diffusion process at inference.
-- A dedicated training config:
+## Implemented modules
+
+- Main policy:
+  - `diffusion_policy/diffusion_policy/policy/beyondmimic_transformer_lowdim_policy.py`
+- Training config:
   - `diffusion_policy/config_files/beyondmimic_guided_diffusion.yaml`
+- Optional dataset support for teacher ensembles:
+  - `diffusion_policy/diffusion_policy/dataset/cyber_dataset.py`
 
-## Key design choices
+## 1) Transformer diffusion + causal attention
 
-Because this repository is quadruped-focused and does not ship BeyondMimic humanoid assets/datasets, the reproduction is implemented as a **transferable algorithmic layer** rather than an exact humanoid benchmark clone.
+The policy uses `TransformerForDiffusion` as denoiser over latent action trajectories.
 
-Guidance proxy targets used in training:
+In config, `causal_attn: true` enables causality in the diffusion transformer.
 
-1. **Tracking / smoothness**: penalize action discontinuities.
-2. **Stability**: penalize large torso-related observation magnitudes (first 3 obs channels).
-3. **Energy**: penalize large action magnitudes.
+## 2) Multi-policy distillation
 
-At inference, the policy optimizes a weighted sum of these guidance predictions via trajectory gradients.
+A teacher router network learns mixture weights over multiple teacher policies.
 
-## Train
+- Input: encoded state latent
+- Output: teacher mixture weights via softmax
+- Distillation objective: MSE between student action reconstruction and weighted teacher action mixture
+
+Expected teacher data shape in a batch:
+
+- `teacher_actions`: `(B, T, K, Da)` where `K` is teacher count
+
+Dataset path support is provided through `teacher_action_key` in `CyberDogDataset`.
+
+## 3) State-latent diffusion
+
+Instead of directly diffusing actions in raw action space:
+
+- observations are encoded into state latents (`state_encoder`), used as diffusion condition;
+- actions are encoded into latent trajectories (`action_encoder`), which become diffusion targets;
+- decoded actions are produced by `action_decoder`.
+
+Training objective combines:
+
+- diffusion denoising loss in latent space;
+- action reconstruction loss;
+- multi-policy distillation loss (if teacher actions are available).
+
+## Run training
 
 ```bash
 source env.sh
 python scripts/train.py --config-name=beyondmimic_guided_diffusion
 ```
 
-## Evaluate
+## Notes
 
-```bash
-source env.sh
-python scripts/eval.py \
-  --checkpoint=<PATH_TO_CKPT> \
-  --task=cyber2_walk
-```
-
-## Suggested next steps for a full BeyondMimic reproduction
-
-- Replace proxy targets with paper-consistent reward/value guidance terms.
-- Add humanoid embodiment, retargeting, and motion-tracking task APIs.
-- Extend observations/actions and objective terms for upper-body and contact-aware control.
-- Add paper-level evaluation metrics and reporting scripts.
+- This repository is still quadruped-oriented; full humanoid paper parity also needs humanoid assets, task APIs, and benchmark scripts.
+- The algorithmic structure requested in your feedback is now implemented in code and configurable for further extension.
