@@ -143,6 +143,22 @@ After that, you can use `scripts/train.py` to train the diffusion model.
   ```
 - There are **ghost values** in `diffusion_policy/diffusion_policy/env_runner/cyber_runner.py`, such as `num_envs`, which should be considered.
 
+
+## BeyondMimic-Style Guided Diffusion Reproduction
+
+A BeyondMimic-inspired guided diffusion baseline is now included in this repository.
+
+- Policy implementation: `diffusion_policy/diffusion_policy/policy/guided_diffusion_transformer_lowdim_policy.py`
+- Config: `diffusion_policy/config_files/beyondmimic_guided_diffusion.yaml`
+- Usage guide: `docs/BeyondMimic-Reproduction.md`
+
+Training command:
+
+```bash
+source env.sh
+python scripts/train.py --config-name=beyondmimic_guided_diffusion
+```
+
 ## Training
 
 ```bash

@@ -1,0 +1,158 @@
+_target_: diffusion_policy.workspace.train_diffusion_transformer_lowdim_workspace.TrainDiffusionTransformerLowdimWorkspace
+name: beyondmimic_guided_diffusion
+exp_name: beyondmimic_cyberdog2
+
+horizon: 12
+obs_dim: 45
+action_dim: 12
+n_obs_steps: 8
+n_action_steps: 4
+obs_as_cond: true
+pred_action_steps_only: false
+
+policy:
+  _target_: diffusion_policy.policy.guided_diffusion_transformer_lowdim_policy.GuidedDiffusionTransformerLowdimPolicy
+  model:
+    _target_: diffusion_policy.model.diffusion.transformer_for_diffusion.TransformerForDiffusion
+    input_dim: 12
+    output_dim: 12
+    horizon: 12
+    n_obs_steps: 8
+    cond_dim: 42
+    n_layer: 6
+    n_head: 4
+    n_emb: 256
+    p_drop_emb: 0.0
+    p_drop_attn: 0.1
+    causal_attn: true
+    time_as_cond: true
+    obs_as_cond: true
+    n_cond_layers: 0
+    separate_goal_conditioning: true
+  noise_scheduler:
+    _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
+    num_train_timesteps: 50
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    variance_type: fixed_small
+    clip_sample: true
+    prediction_type: epsilon
+  horizon: 12
+  obs_dim: 45
+  action_dim: 12
+  n_action_steps: 4
+  n_obs_steps: 8
+  num_inference_steps: 20
+  obs_as_cond: true
+  pred_action_steps_only: false
+  guidance_scale: 1.5
+  guidance_lr: 0.05
+  guidance_steps: 1
+  guidance_loss_weight: 0.2
+  guidance_hidden_dim: 256
+  objective_weights:
+    tracking: 1.0
+    stability: 0.8
+    energy: 0.15
+
+optimizer:
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-3
+  betas: [0.9, 0.95]
+
+training:
+  device: cuda:0
+  seed: 42
+  resume: true
+  use_ema: true
+  debug: false
+  num_epochs: 1200
+  lr_scheduler: cosine
+  lr_warmup_steps: 10000
+  gradient_accumulate_every: 1
+  max_train_steps: null
+  max_val_steps: null
+  rollout_every: 5
+  checkpoint_every: 10
+  val_every: 10
+  sample_every: 5
+  tqdm_interval_sec: 1.0
+
+ema:
+  _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+dataloader:
+  batch_size: 2048
+  num_workers: 2
+  shuffle: true
+  pin_memory: true
+  persistent_workers: false
+
+val_dataloader:
+  batch_size: 1024
+  num_workers: 1
+  shuffle: false
+  pin_memory: true
+  persistent_workers: false
+
+task_name: legged_lowdim
+task:
+  name: legged_lowdim
+  obs_dim: 45
+  action_dim: 12
+  keypoint_dim: 2
+  dataset:
+    _target_: diffusion_policy.dataset.cyber_dataset.CyberDogDataset
+    zarr_path: recorded_data_5_skills_large.zarr
+    horizon: 12
+    pad_before: 1
+    pad_after: 7
+    seed: 42
+    val_ratio: 0.02
+    max_train_episodes: 90
+  env_runner:
+    _target_: diffusion_policy.env_runner.cyber_runner.LeggedRunner
+    fps: 10
+    n_obs_steps: 8
+    n_action_steps: 4
+    n_latency_steps: 0
+    max_steps: 400
+    n_test: 50
+    n_test_vis: 4
+    n_train: 6
+    n_train_vis: 2
+    train_start_seed: 0
+    test_start_seed: 100000
+    legacy_test: true
+    keypoint_visible_rate: 1.0
+    past_action: false
+    agent_keypoints: false
+    n_envs: null
+
+checkpoint:
+  save_last_ckpt: true
+  save_last_snapshot: false
+  topk:
+    k: 5
+    monitor_key: test_mean_score
+    mode: max
+    format_str: epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt
+
+logging:
+  project: diffusion_policy_debug
+  name: beyondmimic_guided_diffusion
+  tags: [beyondmimic, guided_diffusion, humanoid_control]
+  id: null
+  group: null
+  mode: online
+  resume: true
+
+multi_run:
+  run_dir: data/outputs/beyondmimic
+  wandb_name_base: beyondmimic_guided_diffusion
