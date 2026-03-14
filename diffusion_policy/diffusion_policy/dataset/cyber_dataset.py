@@ -20,12 +20,16 @@ class CyberDogDataset(BaseLowdimDataset):
             action_key='action',
             seed=42,
             val_ratio=0.0,
-            max_train_episodes=None
+            max_train_episodes=None,
+            teacher_action_key=None
             ):
         super().__init__()
 
+        keys = [state_key, action_key]
+        if teacher_action_key is not None:
+            keys.append(teacher_action_key)
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=[state_key, action_key])
+            zarr_path, keys=keys)
 
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
@@ -48,6 +52,7 @@ class CyberDogDataset(BaseLowdimDataset):
         self.state_key = state_key
         self.action_key = action_key
         self.train_mask = train_mask
+        self.teacher_action_key = teacher_action_key
         self.horizon = horizon
         self.pad_before = pad_before
         self.pad_after = pad_after
@@ -88,6 +93,8 @@ class CyberDogDataset(BaseLowdimDataset):
             'obs': obs, # T, D_o
             'action': sample[self.action_key][:], # T, D_a
         }
+        if self.teacher_action_key is not None and self.teacher_action_key in sample:
+            data['teacher_actions'] = sample[self.teacher_action_key][:]
         return data
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
